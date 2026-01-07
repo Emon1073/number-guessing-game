@@ -30,7 +30,10 @@ cd number-guessing-game
 
 2: 
 pip install flask
+
+
 if pip doeanot work,
+
 python -m pip install flask
 
 3:
