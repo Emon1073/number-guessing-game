@@ -26,6 +26,8 @@ number-guessing-game/
 1:
 git clone https://github.com/Emon1073/number-guessing-game.git
 cd number-guessing-game
+
+
 2: 
 pip install flask
 if pip doeanot work,
