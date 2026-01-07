@@ -7,7 +7,7 @@ USER_DATA_FILE = "user_data.json"
 WINNING_SCORE = 10
 MAX_HISTORY = 50
 
-# ------------------ persistence ------------------
+
 def load_user_data():
     if os.path.exists(USER_DATA_FILE):
         try:
@@ -37,7 +37,7 @@ def get_leaderboard():
     rows.sort(key=lambda x: x["total_score"], reverse=True)
     return rows[:10]
 
-# ------------------ history + sync helpers ------------------
+
 def ensure_profile_shape(profile: dict):
     """Make sure profile has required keys."""
     profile.setdefault("total_games", 0)
@@ -91,7 +91,7 @@ def compute_summary_from_history(profile: dict):
         "avg_time": avg_time,
     }
 
-# ------------------ simple in-memory sessions ------------------
+
 SESSIONS = {}
 
 def require_session(client_id: str):
@@ -110,7 +110,7 @@ def difficulty_settings(difficulty: str):
     if difficulty == "hard":
         return 1, 30, 3, 3
     if difficulty == "extreme":
-        return 1, 40, 2, 4
+        return 1, 40, 3, 4
     return 1, 20, 5, 1
 
 def give_hint(guess, secret):
@@ -121,7 +121,6 @@ def give_hint(guess, secret):
         return "Getting warm!"
     return "Cold. Far away."
 
-# ------------------ routes ------------------
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -174,7 +173,7 @@ def api_profile():
         msg, code = err
         return jsonify({"ok": False, "error": msg}), code
 
-    # Only logged-in users can view profiles
+    
     if not session.get("username"):
         return jsonify({"ok": False, "error": "Please login first."}), 401
 
@@ -186,11 +185,11 @@ def api_profile():
     if not profile:
         return jsonify({"ok": False, "error": "User not found."}), 404
 
-    # normalize + keep totals consistent with history
+   
     ensure_profile_shape(profile)
     resync_totals_from_history(profile)
 
-    # persist normalized shape + synced totals
+    
     data[username] = profile
     save_user_data(data)
 
@@ -205,7 +204,7 @@ def api_profile():
     history = profile.get("history", []) or []
     history_last50 = history[-50:]
 
-    # avg time based on last50
+   
     times = [h.get("time_taken") for h in history_last50 if isinstance(h.get("time_taken"), (int, float))]
     avg_time = round(sum(times) / len(times), 1) if times else 0.0
 
