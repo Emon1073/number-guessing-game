@@ -186,7 +186,7 @@ def api_profile():
     if not profile:
         return jsonify({"ok": False, "error": "User not found."}), 404
 
-    # ✅ normalize + keep totals consistent with history
+    # normalize + keep totals consistent with history
     ensure_profile_shape(profile)
     resync_totals_from_history(profile)
 
@@ -226,9 +226,9 @@ def api_profile():
             "date_created": profile.get("date_created", ""),
             "last_played": profile.get("last_played", ""),
         },
-        "history": history,                 # ✅ full history (safe for your charts too)
-        "history_last50": history_last50,   # ✅ optional helper for graphs
-        "recent": recent                    # ✅ for any UI that needs recent matches
+        "history": history,                 
+        "history_last50": history_last50,   
+        "recent": recent                    
     })
 
 @app.post("/api/create")
@@ -533,4 +533,6 @@ def api_forfeit():
     })
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
