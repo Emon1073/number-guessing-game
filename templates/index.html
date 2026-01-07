@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Number Guessing Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Number Guessing Game</h1>
+
+    <!-- DEFAULT SCREEN -->
+    <section id="startMenu">
+      <div class="menu">
+        <button id="btnGoLogin" type="button">Login to your account</button>
+        <button id="btnGoCreate" type="button">Create a new user account</button>
+      </div>
+      <div id="startMsg" class="msg"></div>
+    </section>
+
+    <!-- LOGIN PANEL -->
+    <section id="loginPanel" class="hidden">
+      <h2>Login</h2>
+      <input id="loginName" type="text" placeholder="Enter your username">
+      <div class="row">
+        <button id="loginBtn" type="button">Login</button>
+        <button id="backFromLogin" type="button">Back</button>
+      </div>
+      <div id="loginMsg" class="msg"></div>
+    </section>
+
+    <!-- CREATE PANEL -->
+    <section id="createPanel" class="hidden">
+      <h2>Create new username</h2>
+      <input id="createName" type="text" placeholder="Enter new username">
+      <div class="row">
+        <button id="createBtn" type="button">Create</button>
+        <button id="backFromCreate" type="button">Back</button>
+      </div>
+      <div id="createMsg" class="msg"></div>
+    </section>
+
+    <!-- USER AREA -->
+    <section id="userArea" class="hidden">
+      <div class="top">
+        <div>
+          Welcome back <b id="playerName"></b> |
+          Score: <b id="playerScore">0</b> |
+          Games Played: <b id="playerGames">0</b>
+        </div>
+      </div>
+
+      <!-- MENU -->
+      <div id="userMenuButtons" class="menu">
+        <button id="menuPlay" type="button">Play Game</button>
+        <button id="menuLb" type="button">View Leaderboard</button>
+        <button id="menuDelete" type="button">Delete User Account</button>
+        <button id="menuExit" type="button">Exit Game</button>
+      </div>
+
+      <div id="toast"></div>
+
+      <!-- LEADERBOARD PANEL -->
+      <div id="lbPanel" class="panel hidden">
+        <h2>Leaderboard</h2>
+
+        <div class="lb-grid">
+          <!-- LEFT: PLAYER LIST -->
+          <div class="lb-left simple-list">
+            <h3 class="lb-subtitle">Top Players</h3>
+
+            <!-- OL keeps rank ordering (we also render rank number in JS) -->
+            <ol id="leaderboard" class="rank-list"></ol>
+          </div>
+
+          <!-- RIGHT: PERFORMANCE AREA -->
+          <div class="lb-right">
+            <h3 class="lb-subtitle" id="perfTitle">My Performance</h3>
+
+            <div id="myStats" class="stats-grid"></div>
+
+            <div class="chart-box">
+              <h4>Win% vs Lose% Over Time</h4>
+              <canvas id="pctChart" width="900" height="260"></canvas>
+            </div>
+
+            <div class="chart-box">
+              <h4>Total Games & Average Time Over Time</h4>
+              <canvas id="timeChart" width="900" height="260"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <button id="closeLbBtn" type="button">Back to Menu</button>
+      </div>
+
+      <!-- GAME PANEL -->
+      <div id="gamePanel" class="panel hidden">
+        <button id="exitToMenuBtn" type="button">Exit to Menu</button>
+
+        <h2>Choose difficulty level</h2>
+        <div class="buttons">
+          <button class="diff" type="button" data-d="easy">Easy</button>
+          <button class="diff" type="button" data-d="medium">Medium</button>
+          <button class="diff" type="button" data-d="hard">Hard</button>
+          <button class="diff" type="button" data-d="extreme">Extreme</button>
+        </div>
+
+        <div id="rules"></div>
+
+        <div class="guess-area">
+          <input id="guessInput" type="number" placeholder="Your guess">
+          <button id="guessBtn" type="button">Guess</button>
+          <button id="forfeitBtn" type="button">Forfeit</button>
+        </div>
+
+        <div class="meta">
+          <div>Remaining guesses: <span id="remaining">-</span></div>
+          <div>Guess history: <span id="history">-</span></div>
+        </div>
+      </div>
+
+      <!-- DELETE CONFIRM MODAL -->
+      <div id="deleteModal" class="modal hidden">
+        <div class="modal-box">
+          <h3>Do you want to delete your account?</h3>
+          <div class="modal-actions">
+            <button id="confirmDeleteBtn" class="danger">Yes</button>
+            <button id="cancelDeleteBtn">No</button>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </div>
+
+  <script src="/static/app.js" defer></script>
+</body>
+</html>
