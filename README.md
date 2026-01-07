@@ -1,5 +1,5 @@
 # number-guessing-game
-# Number Guessing Game 🎯
+
 
 A web-based Number Guessing Game built with **Flask**, **JavaScript**, **HTML**, and **CSS**.
 
@@ -20,3 +20,6 @@ number-guessing-game/
 │   └── style.css
 │── .gitignore
 │── README.md
+
+RunLocally: http://127.0.0.1:5000
+
