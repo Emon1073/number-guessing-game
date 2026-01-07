@@ -93,7 +93,9 @@ Game animations and sound effects
 👤 Author
 
 Emon Ahmed
+
 Scientific Programming – Winter 2026
+
 Infotronic System Engineering (HSRW)
 
 
