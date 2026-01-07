@@ -32,7 +32,7 @@ cd number-guessing-game
 pip install flask
 
 
-if pip doeanot work,
+if pip doesnot work,
 
 python -m pip install flask
 
@@ -40,4 +40,61 @@ python -m pip install flask
 run the game: python app.py
 
 Run it locally: http://127.0.0.1:5000
+
+
+
+
+##How the Game Works
+
+1.User logs in or creates a new account
+
+2.Select a difficulty level:
+
+3.Easy → smaller range, more guesses
+
+4.Extreme → larger range, fewer guesses
+
+5.Guess the number within the allowed attempts
+
+6.Earn points based on difficulty and remaining tries
+
+7.Performance and leaderboard update automatically
+
+
+
+##Educational Purpose
+
+This project demonstrates:
+
+Flask API routing
+
+Frontend ↔ backend communication
+
+Game logic and state management
+
+Data persistence using JSON
+
+Responsive UI design
+
+Git & GitHub workflow
+
+## Future Improvements (Optional)
+
+Online deployment (Render / Railway)
+
+Password-protected accounts
+
+Multiplayer mode
+
+Database integration (SQLite)
+
+Game animations and sound effects
+
+👤 Author
+
+Emon Ahmed
+Scientific Programming – Winter 2026
+Infotronic System Engineering (HSRW)
+
+
 
