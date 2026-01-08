@@ -1,9 +1,13 @@
 from flask import Flask, render_template, request, jsonify
 import os, json, random, time, datetime
+import os
+
 
 app = Flask(__name__)
 
-USER_DATA_FILE = "user_data.json"
+DATA_DIR = os.environ.get("DATA_DIR", ".")
+USER_DATA_FILE = os.path.join(DATA_DIR, "user_data.json")
+
 WINNING_SCORE = 10
 MAX_HISTORY = 50
 
