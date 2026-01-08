@@ -1,34 +1,45 @@
 from flask import Flask, render_template, request, jsonify
 import os, json, random, time, datetime
-import os
-
 
 app = Flask(__name__)
 
+# ------------------ storage (Render-safe) ------------------
 DATA_DIR = os.environ.get("DATA_DIR", ".")
 USER_DATA_FILE = os.path.join(DATA_DIR, "user_data.json")
 
 WINNING_SCORE = 10
 MAX_HISTORY = 50
 
+def _ensure_data_file():
+    """Ensure DATA_DIR exists and user_data.json exists (important on Render)."""
+    # DATA_DIR might be "." locally (dirname = ""), so guard it
+    dirpath = os.path.dirname(USER_DATA_FILE)
+    if dirpath:
+        os.makedirs(dirpath, exist_ok=True)
+
+    if not os.path.exists(USER_DATA_FILE):
+        with open(USER_DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump({}, f)
 
 def load_user_data():
-    if os.path.exists(USER_DATA_FILE):
-        try:
-            with open(USER_DATA_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except (json.JSONDecodeError, FileNotFoundError):
-            return {}
-    return {}
+    _ensure_data_file()
+    try:
+        with open(USER_DATA_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        # If file is empty/corrupted, recover safely
+        return {}
 
 def save_user_data(data):
+    _ensure_data_file()
     with open(USER_DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4)
 
 def now_str():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-def get_leaderboard():
+def get_leaderboard(limit=None):
+    """Return leaderboard rows sorted by score. If limit is None -> full list."""
     data = load_user_data()
     rows = []
     for u, p in data.items():
@@ -39,11 +50,10 @@ def get_leaderboard():
             "games": int(p.get("total_games", 0)),
         })
     rows.sort(key=lambda x: x["total_score"], reverse=True)
-    return rows[:10]
+    return rows if limit is None else rows[:limit]
 
-
+# ------------------ history + sync helpers ------------------
 def ensure_profile_shape(profile: dict):
-    """Make sure profile has required keys."""
     profile.setdefault("total_games", 0)
     profile.setdefault("games_won", 0)
     profile.setdefault("total_score", 0)
@@ -52,7 +62,6 @@ def ensure_profile_shape(profile: dict):
     profile.setdefault("history", [])
 
 def append_history(profile: dict, won: bool, earned_score: int, time_taken: float, difficulty: str):
-    """Append a match result and keep last MAX_HISTORY entries."""
     ensure_profile_shape(profile)
     profile["history"].append({
         "ts": now_str(),
@@ -64,14 +73,10 @@ def append_history(profile: dict, won: bool, earned_score: int, time_taken: floa
     profile["history"] = profile["history"][-MAX_HISTORY:]
 
 def resync_totals_from_history(profile: dict):
-    """Guarantee totals match history, so graphs and cards always match."""
     ensure_profile_shape(profile)
     hist = profile.get("history", []) or []
-    total = len(hist)
-    wins = sum(1 for h in hist if h.get("won") is True)
-
-    profile["total_games"] = total
-    profile["games_won"] = wins
+    profile["total_games"] = len(hist)
+    profile["games_won"] = sum(1 for h in hist if h.get("won") is True)
 
 def compute_summary_from_history(profile: dict):
     ensure_profile_shape(profile)
@@ -95,7 +100,7 @@ def compute_summary_from_history(profile: dict):
         "avg_time": avg_time,
     }
 
-
+# ------------------ simple in-memory sessions ------------------
 SESSIONS = {}
 
 def require_session(client_id: str):
@@ -125,15 +130,16 @@ def give_hint(guess, secret):
         return "Getting warm!"
     return "Cold. Far away."
 
+# ------------------ routes ------------------
 @app.route("/")
 def index():
     return render_template("index.html")
 
 @app.get("/api/leaderboard")
 def api_leaderboard():
-    return jsonify({"ok": True, "leaderboard": get_leaderboard()})
+    # Full leaderboard by default
+    return jsonify({"ok": True, "leaderboard": get_leaderboard(limit=None)})
 
-# ------------------ player history endpoint ------------------
 @app.post("/api/player_history")
 def api_player_history():
     body = request.get_json(force=True)
@@ -165,7 +171,6 @@ def api_player_history():
         "history": profile.get("history", [])
     })
 
-# ------------------ profile endpoint (FIXED) ------------------
 @app.post("/api/profile")
 def api_profile():
     body = request.get_json(force=True)
@@ -177,7 +182,6 @@ def api_profile():
         msg, code = err
         return jsonify({"ok": False, "error": msg}), code
 
-    
     if not session.get("username"):
         return jsonify({"ok": False, "error": "Please login first."}), 401
 
@@ -189,15 +193,13 @@ def api_profile():
     if not profile:
         return jsonify({"ok": False, "error": "User not found."}), 404
 
-   
     ensure_profile_shape(profile)
     resync_totals_from_history(profile)
 
-    
+    # Save back (keeps totals consistent)
     data[username] = profile
     save_user_data(data)
 
-    # compute stats from synced totals
     total_games = int(profile.get("total_games", 0))
     wins = int(profile.get("games_won", 0))
     losses = max(0, total_games - wins)
@@ -207,14 +209,12 @@ def api_profile():
 
     history = profile.get("history", []) or []
     history_last50 = history[-50:]
+    recent10 = list(reversed(history_last50[-10:]))
 
-   
     times = [h.get("time_taken") for h in history_last50 if isinstance(h.get("time_taken"), (int, float))]
     avg_time = round(sum(times) / len(times), 1) if times else 0.0
 
-    # recent (last 10, most recent first)
-    recent = list(reversed(history_last50[-10:]))
-
+    # IMPORTANT: return "history" as the chart/list source (last 50 is enough)
     return jsonify({
         "ok": True,
         "username": username,
@@ -229,9 +229,8 @@ def api_profile():
             "date_created": profile.get("date_created", ""),
             "last_played": profile.get("last_played", ""),
         },
-        "history": history,                 
-        "history_last50": history_last50,   
-        "recent": recent                    
+        "history": history_last50,
+        "recent": recent10
     })
 
 @app.post("/api/create")
@@ -380,7 +379,6 @@ def api_guess():
     if game["guesses_taken"] >= game["max_guesses"]:
         return jsonify({"ok": False, "error": "No guesses left. Start a new game."}), 400
 
-    # take guess
     game["guesses_taken"] += 1
     game["history"].append(guess)
     remaining = game["max_guesses"] - game["guesses_taken"]
@@ -399,7 +397,6 @@ def api_guess():
             return jsonify({"ok": False, "error": "User profile missing."}), 500
 
         ensure_profile_shape(p)
-
         p["total_score"] += int(earned)
         p["last_played"] = now_str()
 
@@ -408,7 +405,6 @@ def api_guess():
 
         data[username] = p
         save_user_data(data)
-
         session["active_game"] = None
 
         return jsonify({
@@ -418,10 +414,10 @@ def api_guess():
             "earned": int(earned),
             "time_taken": round(time_taken, 1),
             "profile": p,
-            "leaderboard": get_leaderboard(),
+            "leaderboard": get_leaderboard(limit=None),
         })
 
-    # -------- AUTO LOSE (0 remaining) --------
+    # -------- AUTO LOSE --------
     if remaining == 0:
         time_taken = time.time() - game["start_time"]
 
@@ -430,10 +426,8 @@ def api_guess():
         if p:
             ensure_profile_shape(p)
             p["last_played"] = now_str()
-
             append_history(p, False, 0, time_taken, game["difficulty"])
             resync_totals_from_history(p)
-
             data[username] = p
             save_user_data(data)
 
@@ -446,10 +440,9 @@ def api_guess():
             "history": game["history"],
             "remaining": 0,
             "profile": p or {},
-            "leaderboard": get_leaderboard(),
+            "leaderboard": get_leaderboard(limit=None),
         })
 
-    # -------- still tries left --------
     if guess < secret:
         return jsonify({
             "ok": True,
@@ -521,10 +514,8 @@ def api_forfeit():
     if p:
         ensure_profile_shape(p)
         p["last_played"] = now_str()
-
         append_history(p, False, 0, time_taken, game["difficulty"])
         resync_totals_from_history(p)
-
         data[username] = p
         save_user_data(data)
 
@@ -536,6 +527,5 @@ def api_forfeit():
     })
 
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
