@@ -22,6 +22,7 @@ async function api(path, method = "GET", data = null) {
 const startMenu = $("startMenu");
 const loginPanel = $("loginPanel");
 const createPanel = $("createPanel");
+const forgotPanel = $("forgotPanel"); // NEW
 const userArea = $("userArea");
 
 // Delete modal UI
@@ -56,7 +57,7 @@ const pctChart = $("pctChart");
 const timeChart = $("timeChart");
 const perfTitle = $("perfTitle");
 
-// Profile modal (may not exist if removed from HTML; keep safe)
+// Profile modal (may not exist)
 const profileModal = $("profileModal");
 const closeProfileBtn = $("closeProfileBtn");
 
@@ -64,9 +65,8 @@ let currentUser = null;
 let activeGame = false;
 let selectedProfileUser = null;
 
-//Difficulty highlight 
+// Difficulty highlight
 const diffButtons = Array.from(document.querySelectorAll(".diff"));
-
 function setActiveDiffButton(clickedBtn) {
   diffButtons.forEach(b => b.classList.remove("active-diff"));
   if (clickedBtn) clickedBtn.classList.add("active-diff");
@@ -81,40 +81,92 @@ function resetToDefault(message = "") {
   selectedProfileUser = null;
   activeGame = false;
 
-  //  reset selected difficulty highlight
   setActiveDiffButton(null);
 
   hide(loginPanel);
   hide(createPanel);
+  hide(forgotPanel);
   hide(userArea);
   hide(lbPanel);
   hide(gamePanel);
   hide(profileModal);
   hide(deleteModal);
 
-  $("loginMsg").textContent = "";
-  $("createMsg").textContent = "";
-  $("startMsg").textContent = message;
+  if ($("loginMsg")) $("loginMsg").textContent = "";
+  if ($("createMsg")) $("createMsg").textContent = "";
+  if ($("forgotMsg")) $("forgotMsg").textContent = "";
+  if ($("resetMsg")) $("resetMsg").textContent = "";
+  if ($("startMsg")) $("startMsg").textContent = message;
 
-  $("loginName").value = "";
-  $("createName").value = "";
+  if ($("loginName")) $("loginName").value = "";
+  if ($("loginPass")) $("loginPass").value = "";
+
+  if ($("createName")) $("createName").value = "";
+  if ($("createEmail")) $("createEmail").value = "";
+  if ($("createPass")) $("createPass").value = "";
+
+  if ($("forgotEmail")) $("forgotEmail").value = "";
+  if ($("resetToken")) $("resetToken").value = "";
+  if ($("resetNewPass")) $("resetNewPass").value = "";
+
   setToast("");
-
   show(startMenu);
 }
 
 // Navigation
-$("btnGoLogin").onclick = () => { hide(startMenu); show(loginPanel); $("loginName").focus(); };
-$("btnGoCreate").onclick = () => { hide(startMenu); show(createPanel); $("createName").focus(); };
+$("btnGoLogin").onclick = () => {
+  hide(startMenu);
+  hide(createPanel);
+  hide(forgotPanel);
+  show(loginPanel);
+  $("loginName")?.focus();
+};
 
-$("backFromLogin").onclick = () => { hide(loginPanel); show(startMenu); $("loginMsg").textContent = ""; };
-$("backFromCreate").onclick = () => { hide(createPanel); show(startMenu); $("createMsg").textContent = ""; };
+$("btnGoCreate").onclick = () => {
+  hide(startMenu);
+  hide(loginPanel);
+  hide(forgotPanel);
+  show(createPanel);
+  $("createName")?.focus();
+};
+
+$("backFromLogin").onclick = () => {
+  hide(loginPanel);
+  show(startMenu);
+  if ($("loginMsg")) $("loginMsg").textContent = "";
+};
+
+$("backFromCreate").onclick = () => {
+  hide(createPanel);
+  show(startMenu);
+  if ($("createMsg")) $("createMsg").textContent = "";
+};
+
+// Forgot password navigation
+const goForgot = $("goForgot");
+if (goForgot) {
+  goForgot.onclick = () => {
+    hide(loginPanel);
+    hide(createPanel);
+    hide(startMenu);
+    show(forgotPanel);
+    $("forgotEmail")?.focus();
+  };
+}
+
+const backFromForgot = $("backFromForgot");
+if (backFromForgot) {
+  backFromForgot.onclick = () => {
+    hide(forgotPanel);
+    show(loginPanel);
+    if ($("forgotMsg")) $("forgotMsg").textContent = "";
+    if ($("resetMsg")) $("resetMsg").textContent = "";
+  };
+}
 
 // View helpers
 function showMenuView() {
   activeGame = false;
-
-  // reset selected difficulty highlight
   setActiveDiffButton(null);
 
   hide(gamePanel);
@@ -143,7 +195,7 @@ function showLeaderboardView() {
   setToast("Leaderboard loaded.");
 }
 
-// LEADERBOARD LIST 
+// LEADERBOARD LIST
 function renderLeaderboard(list) {
   leaderboardEl.innerHTML = "";
 
@@ -160,7 +212,9 @@ function renderLeaderboard(list) {
     li.className = "top-player-line";
     li.dataset.username = u.username;
 
+    // Mark logged-in player by default
     if (currentUser && u.username === currentUser) li.classList.add("active-player");
+    // Mark clicked player as selected
     if (selectedProfileUser && u.username === selectedProfileUser) li.classList.add("selected-player");
 
     const rank = document.createElement("span");
@@ -182,10 +236,9 @@ function renderLeaderboard(list) {
   });
 }
 
-
 if (closeProfileBtn) closeProfileBtn.onclick = () => hide(profileModal);
 
-// MY PERFORMANCE 
+// MY PERFORMANCE
 function renderMyStats(summary) {
   if (!myStats) return;
 
@@ -502,14 +555,17 @@ leaderboardEl.addEventListener("click", async (e) => {
   await loadProfileToRight(li.dataset.username);
 });
 
-// ---------- LOGIN ----------
+// ---------- LOGIN (username + password) ----------
 $("loginBtn").onclick = async () => {
   $("loginMsg").textContent = "";
   try {
     const username = $("loginName").value.trim();
-    if (!username) return $("loginMsg").textContent = "Enter your username.";
+    const password = $("loginPass").value;
 
-    const out = await api("/api/login", "POST", { client_id: clientId, username });
+    if (!username) return $("loginMsg").textContent = "Enter your username.";
+    if (!password) return $("loginMsg").textContent = "Enter your password.";
+
+    const out = await api("/api/login", "POST", { client_id: clientId, username, password });
 
     currentUser = out.username;
     selectedProfileUser = out.username;
@@ -518,7 +574,7 @@ $("loginBtn").onclick = async () => {
     playerScore.textContent = out.profile.total_score;
     playerGames.textContent = out.profile.total_games;
 
-    hide(startMenu); hide(loginPanel); hide(createPanel);
+    hide(startMenu); hide(loginPanel); hide(createPanel); hide(forgotPanel);
     show(userArea);
 
     showMenuView();
@@ -528,14 +584,19 @@ $("loginBtn").onclick = async () => {
   }
 };
 
-// ---------- CREATE ----------
+// ---------- CREATE (username + email + password) ----------
 $("createBtn").onclick = async () => {
   $("createMsg").textContent = "";
   try {
     const username = $("createName").value.trim();
-    if (!username) return $("createMsg").textContent = "Enter a new username.";
+    const email = $("createEmail").value.trim();
+    const password = $("createPass").value;
 
-    const out = await api("/api/create", "POST", { client_id: clientId, username });
+    if (!username) return $("createMsg").textContent = "Enter a new username.";
+    if (!email) return $("createMsg").textContent = "Enter your email.";
+    if (!password || password.length < 6) return $("createMsg").textContent = "Password must be at least 6 characters.";
+
+    const out = await api("/api/create", "POST", { client_id: clientId, username, email, password });
 
     currentUser = out.username;
     selectedProfileUser = out.username;
@@ -544,7 +605,7 @@ $("createBtn").onclick = async () => {
     playerScore.textContent = out.profile.total_score;
     playerGames.textContent = out.profile.total_games;
 
-    hide(startMenu); hide(loginPanel); hide(createPanel);
+    hide(startMenu); hide(loginPanel); hide(createPanel); hide(forgotPanel);
     show(userArea);
 
     showMenuView();
@@ -554,6 +615,56 @@ $("createBtn").onclick = async () => {
   }
 };
 
+// ---------- FORGOT PASSWORD ----------
+const requestResetBtn = $("requestResetBtn");
+if (requestResetBtn) {
+  requestResetBtn.onclick = async () => {
+    if ($("forgotMsg")) $("forgotMsg").textContent = "";
+    try {
+      const email = $("forgotEmail").value.trim();
+      if (!email) return $("forgotMsg").textContent = "Enter your email.";
+
+      const out = await api("/api/request_password_reset", "POST", { email });
+
+      // Demo: backend returns token
+      if (out.reset_token && $("resetToken")) {
+        $("resetToken").value = out.reset_token;
+      }
+
+      if ($("forgotMsg")) $("forgotMsg").textContent = out.message || "If the account exists, a reset token was generated.";
+      setToast("Reset token requested.");
+    } catch (e) {
+      if ($("forgotMsg")) $("forgotMsg").textContent = e.message;
+    }
+  };
+}
+
+const resetPassBtn = $("resetPassBtn");
+if (resetPassBtn) {
+  resetPassBtn.onclick = async () => {
+    if ($("resetMsg")) $("resetMsg").textContent = "";
+    try {
+      const token = $("resetToken").value.trim();
+      const new_password = $("resetNewPass").value;
+
+      if (!token) return $("resetMsg").textContent = "Paste the reset token.";
+      if (!new_password || new_password.length < 6) return $("resetMsg").textContent = "New password must be at least 6 characters.";
+
+      const out = await api("/api/reset_password", "POST", { token, new_password });
+
+      if ($("resetMsg")) $("resetMsg").textContent = out.message || "Password updated.";
+      setToast("Password updated. Please login.");
+
+      // go back to login
+      hide(forgotPanel);
+      show(loginPanel);
+      $("loginName")?.focus();
+    } catch (e) {
+      if ($("resetMsg")) $("resetMsg").textContent = e.message;
+    }
+  };
+}
+
 // ---------- MENU ----------
 $("menuPlay").onclick = () => showGameView();
 
@@ -562,6 +673,7 @@ $("menuLb").onclick = async () => {
     const out = await api("/api/leaderboard");
     renderLeaderboard(out.leaderboard);
 
+    // load logged-in user performance by default
     if (currentUser) await loadProfileToRight(currentUser);
 
     showLeaderboardView();
@@ -570,7 +682,11 @@ $("menuLb").onclick = async () => {
   }
 };
 
-closeLbBtn.onclick = () => showMenuView();
+closeLbBtn.onclick = () => {
+  // "Back to Menu" from leaderboard: ensure logged-in user remains the active highlight next time
+  selectedProfileUser = currentUser;
+  showMenuView();
+};
 
 $("menuDelete").onclick = () => show(deleteModal);
 
@@ -636,9 +752,10 @@ guessBtn.onclick = async () => {
     if (out.status === "win") {
       activeGame = false;
       setToast(`You won! Points: ${out.earned} | Time: ${out.time_taken}s`);
-      playerScore.textContent = out.profile.total_score;
-      playerGames.textContent = out.profile.total_games;
-
+      if (out.profile) {
+        playerScore.textContent = out.profile.total_score;
+        playerGames.textContent = out.profile.total_games;
+      }
       remainingEl.textContent = "-";
       historyEl.textContent = "-";
     } else if (out.status === "lose") {

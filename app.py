@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify
-import os, json, random, time, datetime
+import os, json, random, time, datetime, re, secrets
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 
@@ -10,9 +11,11 @@ USER_DATA_FILE = os.path.join(DATA_DIR, "user_data.json")
 WINNING_SCORE = 10
 MAX_HISTORY = 50
 
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
 def _ensure_data_file():
     """Ensure DATA_DIR exists and user_data.json exists (important on Render)."""
-    # DATA_DIR might be "." locally (dirname = ""), so guard it
     dirpath = os.path.dirname(USER_DATA_FILE)
     if dirpath:
         os.makedirs(dirpath, exist_ok=True)
@@ -21,22 +24,38 @@ def _ensure_data_file():
         with open(USER_DATA_FILE, "w", encoding="utf-8") as f:
             json.dump({}, f)
 
+
 def load_user_data():
     _ensure_data_file()
     try:
         with open(USER_DATA_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     except (json.JSONDecodeError, FileNotFoundError):
-        # If file is empty/corrupted, recover safely
         return {}
+
 
 def save_user_data(data):
     _ensure_data_file()
     with open(USER_DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4)
 
+
 def now_str():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def is_valid_email(email: str) -> bool:
+    return bool(email and EMAIL_RE.match(email.strip().lower()))
+
+
+def safe_profile(profile: dict) -> dict:
+    """Return a copy with sensitive fields removed."""
+    p = dict(profile or {})
+    p.pop("password_hash", None)
+    p.pop("reset_token", None)
+    p.pop("reset_token_exp", None)
+    return p
+
 
 def get_leaderboard(limit=None):
     """Return leaderboard rows sorted by score. If limit is None -> full list."""
@@ -52,14 +71,23 @@ def get_leaderboard(limit=None):
     rows.sort(key=lambda x: x["total_score"], reverse=True)
     return rows if limit is None else rows[:limit]
 
+
 # ------------------ history + sync helpers ------------------
 def ensure_profile_shape(profile: dict):
+    # game stats
     profile.setdefault("total_games", 0)
     profile.setdefault("games_won", 0)
     profile.setdefault("total_score", 0)
     profile.setdefault("date_created", now_str())
     profile.setdefault("last_played", now_str())
     profile.setdefault("history", [])
+
+    # auth fields (new)
+    profile.setdefault("email", "")
+    profile.setdefault("password_hash", "")
+    profile.setdefault("reset_token", "")
+    profile.setdefault("reset_token_exp", 0)
+
 
 def append_history(profile: dict, won: bool, earned_score: int, time_taken: float, difficulty: str):
     ensure_profile_shape(profile)
@@ -72,11 +100,13 @@ def append_history(profile: dict, won: bool, earned_score: int, time_taken: floa
     })
     profile["history"] = profile["history"][-MAX_HISTORY:]
 
+
 def resync_totals_from_history(profile: dict):
     ensure_profile_shape(profile)
     hist = profile.get("history", []) or []
     profile["total_games"] = len(hist)
     profile["games_won"] = sum(1 for h in hist if h.get("won") is True)
+
 
 def compute_summary_from_history(profile: dict):
     ensure_profile_shape(profile)
@@ -100,8 +130,10 @@ def compute_summary_from_history(profile: dict):
         "avg_time": avg_time,
     }
 
+
 # ------------------ simple in-memory sessions ------------------
 SESSIONS = {}
+
 
 def require_session(client_id: str):
     if not client_id:
@@ -109,6 +141,7 @@ def require_session(client_id: str):
     if client_id not in SESSIONS:
         SESSIONS[client_id] = {"username": None, "active_game": None}
     return SESSIONS[client_id], None
+
 
 # ------------------ game helpers ------------------
 def difficulty_settings(difficulty: str):
@@ -122,6 +155,7 @@ def difficulty_settings(difficulty: str):
         return 1, 40, 3, 4
     return 1, 20, 5, 1
 
+
 def give_hint(guess, secret):
     diff = abs(guess - secret)
     if diff <= 3:
@@ -130,15 +164,17 @@ def give_hint(guess, secret):
         return "Getting warm!"
     return "Cold. Far away."
 
+
 # ------------------ routes ------------------
 @app.route("/")
 def index():
     return render_template("index.html")
 
+
 @app.get("/api/leaderboard")
 def api_leaderboard():
-    # Full leaderboard by default
     return jsonify({"ok": True, "leaderboard": get_leaderboard(limit=None)})
+
 
 @app.post("/api/player_history")
 def api_player_history():
@@ -171,6 +207,7 @@ def api_player_history():
         "history": profile.get("history", [])
     })
 
+
 @app.post("/api/profile")
 def api_profile():
     body = request.get_json(force=True)
@@ -196,7 +233,6 @@ def api_profile():
     ensure_profile_shape(profile)
     resync_totals_from_history(profile)
 
-    # Save back (keeps totals consistent)
     data[username] = profile
     save_user_data(data)
 
@@ -214,7 +250,6 @@ def api_profile():
     times = [h.get("time_taken") for h in history_last50 if isinstance(h.get("time_taken"), (int, float))]
     avg_time = round(sum(times) / len(times), 1) if times else 0.0
 
-    # IMPORTANT: return "history" as the chart/list source (last 50 is enough)
     return jsonify({
         "ok": True,
         "username": username,
@@ -233,11 +268,15 @@ def api_profile():
         "recent": recent10
     })
 
+
+# ------------------ AUTH: create / login / reset ------------------
 @app.post("/api/create")
 def api_create():
     body = request.get_json(force=True)
     client_id = body.get("client_id", "")
     username = (body.get("username", "") or "").strip()
+    email = (body.get("email", "") or "").strip().lower()
+    password = body.get("password", "") or ""
 
     session, err = require_session(client_id)
     if err:
@@ -246,31 +285,48 @@ def api_create():
 
     if not username:
         return jsonify({"ok": False, "error": "Username cannot be empty."}), 400
+    if not is_valid_email(email):
+        return jsonify({"ok": False, "error": "Please enter a valid email."}), 400
+    if len(password) < 6:
+        return jsonify({"ok": False, "error": "Password must be at least 6 characters."}), 400
 
     data = load_user_data()
     if username in data:
         return jsonify({"ok": False, "error": "Username already exists. Use Login."}), 400
 
-    data[username] = {
+    # optional: unique email
+    for u, p in data.items():
+        if (p.get("email", "") or "").lower() == email:
+            return jsonify({"ok": False, "error": "Email is already used by another account."}), 400
+
+    profile = {
         "total_games": 0,
         "games_won": 0,
         "total_score": 0,
         "date_created": now_str(),
         "last_played": now_str(),
-        "history": []
+        "history": [],
+        "email": email,
+        "password_hash": generate_password_hash(password),
+        "reset_token": "",
+        "reset_token_exp": 0,
     }
+
+    data[username] = profile
     save_user_data(data)
 
     session["username"] = username
     session["active_game"] = None
 
-    return jsonify({"ok": True, "username": username, "profile": data[username]})
+    return jsonify({"ok": True, "username": username, "profile": safe_profile(profile)})
+
 
 @app.post("/api/login")
 def api_login():
     body = request.get_json(force=True)
     client_id = body.get("client_id", "")
     username = (body.get("username", "") or "").strip()
+    password = body.get("password", "") or ""
 
     session, err = require_session(client_id)
     if err:
@@ -279,21 +335,128 @@ def api_login():
 
     if not username:
         return jsonify({"ok": False, "error": "Username cannot be empty."}), 400
+    if not password:
+        return jsonify({"ok": False, "error": "Password cannot be empty."}), 400
 
     data = load_user_data()
     if username not in data:
-        return jsonify({"ok": False, "error": "User not found. Create a new user."}), 404
+        return jsonify({"ok": False, "error": "Invalid username or password."}), 401
 
-    ensure_profile_shape(data[username])
-    resync_totals_from_history(data[username])
+    profile = data[username]
+    ensure_profile_shape(profile)
 
-    data[username]["last_played"] = now_str()
+    # old accounts without password set
+    if not profile.get("password_hash"):
+        return jsonify({
+            "ok": False,
+            "error": "This account has no password set. Use password reset to set one."
+        }), 400
+
+    if not check_password_hash(profile["password_hash"], password):
+        return jsonify({"ok": False, "error": "Invalid username or password."}), 401
+
+    resync_totals_from_history(profile)
+    profile["last_played"] = now_str()
+
+    data[username] = profile
     save_user_data(data)
 
     session["username"] = username
     session["active_game"] = None
 
-    return jsonify({"ok": True, "username": username, "profile": data[username]})
+    return jsonify({"ok": True, "username": username, "profile": safe_profile(profile)})
+
+
+@app.post("/api/request_password_reset")
+def api_request_password_reset():
+    """
+    Request a password reset token.
+    Accepts either:
+      - { "email": "..." }
+      - OR { "username": "..." }  (useful for older accounts without email)
+    """
+    body = request.get_json(force=True)
+    email = (body.get("email", "") or "").strip().lower()
+    username = (body.get("username", "") or "").strip()
+
+    data = load_user_data()
+
+    found_user = None
+    if email:
+        if not is_valid_email(email):
+            return jsonify({"ok": False, "error": "Please enter a valid email."}), 400
+        for u, p in data.items():
+            if (p.get("email", "") or "").lower() == email:
+                found_user = u
+                break
+    elif username:
+        if username in data:
+            found_user = username
+    else:
+        return jsonify({"ok": False, "error": "Provide email or username."}), 400
+
+    # security: don't reveal existence (but for demo we may return token if found)
+    if not found_user:
+        return jsonify({"ok": True, "message": "If the account exists, a reset token was generated."})
+
+    profile = data[found_user]
+    ensure_profile_shape(profile)
+
+    token = secrets.token_urlsafe(24)
+    exp = int(time.time()) + 15 * 60  # 15 minutes
+
+    profile["reset_token"] = token
+    profile["reset_token_exp"] = exp
+
+    data[found_user] = profile
+    save_user_data(data)
+
+    # DEMO: returning token. In production: email it to the user.
+    return jsonify({
+        "ok": True,
+        "message": "Reset token generated. (Demo: returned in response)",
+        "reset_token": token
+    })
+
+
+@app.post("/api/reset_password")
+def api_reset_password():
+    body = request.get_json(force=True)
+    token = (body.get("token", "") or "").strip()
+    new_password = body.get("new_password", "") or ""
+
+    if not token:
+        return jsonify({"ok": False, "error": "Missing token."}), 400
+    if len(new_password) < 6:
+        return jsonify({"ok": False, "error": "Password must be at least 6 characters."}), 400
+
+    data = load_user_data()
+    now_ts = int(time.time())
+
+    found_user = None
+    for u, p in data.items():
+        if (p.get("reset_token") or "") == token:
+            found_user = u
+            break
+
+    if not found_user:
+        return jsonify({"ok": False, "error": "Invalid token."}), 400
+
+    profile = data[found_user]
+    ensure_profile_shape(profile)
+
+    if int(profile.get("reset_token_exp", 0) or 0) < now_ts:
+        return jsonify({"ok": False, "error": "Token expired. Request a new one."}), 400
+
+    profile["password_hash"] = generate_password_hash(new_password)
+    profile["reset_token"] = ""
+    profile["reset_token_exp"] = 0
+
+    data[found_user] = profile
+    save_user_data(data)
+
+    return jsonify({"ok": True, "message": "Password updated. You can now login."})
+
 
 @app.post("/api/logout")
 def api_logout():
@@ -309,6 +472,8 @@ def api_logout():
     session["active_game"] = None
     return jsonify({"ok": True})
 
+
+# ------------------ game endpoints ------------------
 @app.post("/api/start")
 def api_start():
     body = request.get_json(force=True)
@@ -349,6 +514,7 @@ def api_start():
             "base_points": base_points
         }
     })
+
 
 @app.post("/api/guess")
 def api_guess():
@@ -413,7 +579,7 @@ def api_guess():
             "message": "Correct!",
             "earned": int(earned),
             "time_taken": round(time_taken, 1),
-            "profile": p,
+            "profile": safe_profile(p),
             "leaderboard": get_leaderboard(limit=None),
         })
 
@@ -439,7 +605,7 @@ def api_guess():
             "message": f"Game over! You ran out of guesses. The number was {secret}.",
             "history": game["history"],
             "remaining": 0,
-            "profile": p or {},
+            "profile": safe_profile(p) if p else {},
             "leaderboard": get_leaderboard(limit=None),
         })
 
@@ -462,6 +628,7 @@ def api_guess():
         "remaining": remaining,
     })
 
+
 @app.post("/api/delete")
 def api_delete():
     body = request.get_json(force=True)
@@ -473,6 +640,12 @@ def api_delete():
         msg, code = err
         return jsonify({"ok": False, "error": msg}), code
 
+    # safer: only allow deleting your own account
+    if not session.get("username"):
+        return jsonify({"ok": False, "error": "Please login first."}), 401
+    if session.get("username") != username:
+        return jsonify({"ok": False, "error": "You can only delete your own account."}), 403
+
     data = load_user_data()
     if username not in data:
         return jsonify({"ok": False, "error": "User not found."}), 404
@@ -480,11 +653,11 @@ def api_delete():
     del data[username]
     save_user_data(data)
 
-    if session.get("username") == username:
-        session["username"] = None
-        session["active_game"] = None
+    session["username"] = None
+    session["active_game"] = None
 
     return jsonify({"ok": True})
+
 
 @app.post("/api/forfeit")
 def api_forfeit():
@@ -523,8 +696,9 @@ def api_forfeit():
         "ok": True,
         "status": "lose",
         "message": f"Game over. The number was {secret}.",
-        "profile": p or {}
+        "profile": safe_profile(p) if p else {}
     })
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

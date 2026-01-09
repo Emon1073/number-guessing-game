@@ -1,4 +1,4 @@
-/* ---------- Base ---------- */
+
 body{
   margin:0;
   font-family: Arial, sans-serif;
@@ -14,7 +14,7 @@ body{
   border-radius:12px;
 }
 
-/*  better spacing on small screens */
+
 @media (max-width: 600px){
   .container{
     margin: 16px auto;
@@ -30,7 +30,7 @@ body{
 
 h2{ margin-top:0; }
 
-/* ---------- Common UI ---------- */
+
 .subtitle{
   color:#9ca3af;
   text-align:center;
@@ -44,7 +44,7 @@ input, select{
   color:#e5e7eb;
 }
 
-/* inputs behave better on mobile */
+
 @media (max-width: 600px){
   input, select{
     width: 100%;
@@ -71,7 +71,7 @@ button:hover{ background:#334155; }
   flex-wrap:wrap;
 }
 
-/* buttons stack nicely on mobile */
+
 @media (max-width: 600px){
   .row button{
     width: 100%;
@@ -103,7 +103,6 @@ button:hover{ background:#334155; }
   margin-bottom:16px;
 }
 
-/* ---------- Panels ---------- */
 .panel{
   margin-top:14px;
   padding:14px;
@@ -119,9 +118,7 @@ button:hover{ background:#334155; }
   border-radius:6px;
 }
 
-/* =========================
-   GAME PANEL
-   ========================= */
+
 #gamePanel{
   padding: 30px 34px;
   margin-top: 18px;
@@ -189,9 +186,7 @@ button:hover{ background:#334155; }
   line-height:1.5;
 }
 
-/* =======================
-   LEADERBOARD LAYOUT
-   ======================= */
+
 #lbPanel{
   overflow:hidden;
 }
@@ -228,9 +223,7 @@ button:hover{ background:#334155; }
   color:#e5e7eb;
 }
 
-/* =======================
-   TOP PLAYERS LIST
-   ======================= */
+
 #leaderboard{
   list-style:none;
   padding:0;
@@ -239,13 +232,13 @@ button:hover{ background:#334155; }
 
 #leaderboard li.top-player-line{
   display:grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto; /* stable layout */
+  grid-template-columns: 28px minmax(0, 1fr) auto; 
   align-items:start;
   column-gap:10px;
   padding: 6px 6px;
   border-radius: 8px;
 
-  /*  IMPORTANT: remove truncation at row level */
+
   white-space: normal;
   overflow: visible;
   text-overflow: unset;
@@ -255,14 +248,14 @@ button:hover{ background:#334155; }
   font-weight:600;
 }
 
-/* rank */
+
 #leaderboard .lb-rank{
   color: #94a3b8;
   font-weight: 700;
   text-align: left;
 }
 
-/* full username always visible, wraps if needed */
+
 #leaderboard .lb-name{
   cursor: pointer;
   font-weight: 700;
@@ -278,14 +271,14 @@ button:hover{ background:#334155; }
   text-decoration: underline;
 }
 
-/* score */
+
 #leaderboard .lb-score{
   color: #94a3b8;
   font-weight: 700;
   white-space: nowrap;
 }
 
-/* Active player row */
+
 #leaderboard li.active-player{
   background: rgba(59,130,246,0.12);
   border: 1px solid rgba(59,130,246,0.35);
@@ -297,15 +290,13 @@ button:hover{ background:#334155; }
   font-weight: 700;
 }
 
-/* Selected player row */
+
 #leaderboard li.selected-player{
   background: rgba(34,197,94,0.10);
   border: 1px solid rgba(34,197,94,0.35);
 }
 
-/* ==========================
-   STATS
-   ========================== */
+
 .stats-grid{
   display:grid;
   grid-template-columns: repeat(6, 1fr);
@@ -336,7 +327,7 @@ button:hover{ background:#334155; }
   margin-top:4px;
 }
 
-/* charts */
+
 .chart-box{
   border:1px solid rgba(51,65,85,0.7);
   background: rgba(2,6,23,0.35);
@@ -359,7 +350,7 @@ button:hover{ background:#334155; }
   max-width:100%;
 }
 
-/* ---------- Modal (Delete Confirmation) ---------- */
+
 .modal{
   position:fixed;
   inset:0;
@@ -406,14 +397,14 @@ button.danger{
 }
 button.danger:hover{ background:#991b1b; }
 
-/* ---------- Responsive ---------- */
+
 @media (max-width: 1200px){
   .stats-grid{
     grid-template-columns: repeat(3, 1fr);
   }
 }
 
-/* tablet/mobile: stack leaderboard */
+
 @media (max-width: 900px){
   .lb-grid{ grid-template-columns: 1fr; }
 
@@ -431,10 +422,39 @@ button.danger:hover{ background:#991b1b; }
     grid-template-columns: repeat(2, 1fr);
   }
 }
-/*  Active difficulty highlight */
+
 .diff.active-diff{
   background: rgba(59,130,246,0.18);
   border-color: rgba(59,130,246,0.55);
   box-shadow: 0 0 0 2px rgba(59,130,246,0.18);
   font-weight: 800;
+}
+
+#loginPanel input,
+#createPanel input,
+#forgotPanel input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 10px 0;
+}
+
+
+#forgotPanel .help {
+  color: #9ca3af;
+  font-size: 14px;
+  line-height: 1.4;
+  margin: 8px 0 12px;
+}
+
+
+#forgotPanel hr {
+  border: none;
+  border-top: 1px solid rgba(51,65,85,0.7);
+  margin: 14px 0;
+}
+
+
+#loginPanel, #createPanel, #forgotPanel {
+  max-width: 420px;
 }

@@ -22,9 +22,12 @@
     <!-- LOGIN PANEL -->
     <section id="loginPanel" class="hidden">
       <h2>Login</h2>
-      <input id="loginName" type="text" placeholder="Enter your username">
+      <input id="loginName" type="text" placeholder="Enter your username" autocomplete="username">
+      <input id="loginPass" type="password" placeholder="Enter your password" autocomplete="current-password">
+
       <div class="row">
         <button id="loginBtn" type="button">Login</button>
+        <button id="goForgot" type="button">Forgot password</button>
         <button id="backFromLogin" type="button">Back</button>
       </div>
       <div id="loginMsg" class="msg"></div>
@@ -32,13 +35,45 @@
 
     <!-- CREATE PANEL -->
     <section id="createPanel" class="hidden">
-      <h2>Create new username</h2>
-      <input id="createName" type="text" placeholder="Enter new username">
+      <h2>Create an account</h2>
+      <input id="createName" type="text" placeholder="Enter new username" autocomplete="username">
+      <input id="createEmail" type="email" placeholder="Enter your email" autocomplete="email">
+      <input id="createPass" type="password" placeholder="Create a password (min 6 chars)" autocomplete="new-password">
+
       <div class="row">
         <button id="createBtn" type="button">Create</button>
         <button id="backFromCreate" type="button">Back</button>
       </div>
       <div id="createMsg" class="msg"></div>
+    </section>
+
+    <!-- FORGOT PASSWORD: REQUEST TOKEN -->
+    <section id="forgotPanel" class="hidden">
+      <h2>Reset password</h2>
+      <p class="help">
+        Enter your account email. We will generate a reset token (demo: token will be shown).
+      </p>
+
+      <input id="forgotEmail" type="email" placeholder="Enter your email" autocomplete="email">
+
+      <div class="row">
+        <button id="requestResetBtn" type="button">Send reset token</button>
+        <button id="backFromForgot" type="button">Back</button>
+      </div>
+
+      <div id="forgotMsg" class="msg"></div>
+
+      <hr>
+
+      <h3>Enter token & new password</h3>
+      <input id="resetToken" type="text" placeholder="Paste reset token">
+      <input id="resetNewPass" type="password" placeholder="New password (min 6 chars)" autocomplete="new-password">
+
+      <div class="row">
+        <button id="resetPassBtn" type="button">Update password</button>
+      </div>
+
+      <div id="resetMsg" class="msg"></div>
     </section>
 
     <!-- USER AREA -->
@@ -69,8 +104,6 @@
           <!-- LEFT: PLAYER LIST -->
           <div class="lb-left simple-list">
             <h3 class="lb-subtitle">Top Players</h3>
-
-            <!-- OL keeps rank ordering (we also render rank number in JS) -->
             <ol id="leaderboard" class="rank-list"></ol>
           </div>
 
