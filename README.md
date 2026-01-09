@@ -1,7 +1,7 @@
 # number-guessing-game
 
 
-A web-based Number Guessing Game built with **Flask**, **JavaScript**, **HTML**, and **CSS**.
+A web-based Number Guessing Game built with **Python**, **JavaScript**, **HTML**, and **CSS**.
 
 ## Features
 - User login & account creation
@@ -41,6 +41,8 @@ run the game: python app.py
 
 Run it locally: http://127.0.0.1:5000
 
+Online playing link: https://number-guessing-game-21ic.onrender.com
+
 
 
 
@@ -50,9 +52,9 @@ Run it locally: http://127.0.0.1:5000
 
 2.Select a difficulty level:
 
-3.Easy → smaller range, more guesses
+3.Easy: smaller range, more guesses
 
-4.Extreme → larger range, fewer guesses
+4.Extreme: larger range, fewer guesses
 
 5.Guess the number within the allowed attempts
 
@@ -68,7 +70,7 @@ This project demonstrates:
 
 Flask API routing
 
-Frontend ↔ backend communication
+Frontend - backend communication
 
 Game logic and state management
 
@@ -90,11 +92,11 @@ Database integration (SQLite)
 
 Game animations and sound effects
 
-👤 Author
+ Author
 
 Emon Ahmed
 
-Scientific Programming – Winter 2026
+Scientific Programming - Winter 2026
 
 Infotronic System Engineering (HSRW)
 

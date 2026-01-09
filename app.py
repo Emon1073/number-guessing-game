@@ -74,7 +74,7 @@ def get_leaderboard(limit=None):
 
 # ------------------ history + sync helpers ------------------
 def ensure_profile_shape(profile: dict):
-    # game stats
+  
     profile.setdefault("total_games", 0)
     profile.setdefault("games_won", 0)
     profile.setdefault("total_score", 0)
@@ -82,7 +82,7 @@ def ensure_profile_shape(profile: dict):
     profile.setdefault("last_played", now_str())
     profile.setdefault("history", [])
 
-    # auth fields (new)
+  
     profile.setdefault("email", "")
     profile.setdefault("password_hash", "")
     profile.setdefault("reset_token", "")
@@ -294,7 +294,7 @@ def api_create():
     if username in data:
         return jsonify({"ok": False, "error": "Username already exists. Use Login."}), 400
 
-    # optional: unique email
+   
     for u, p in data.items():
         if (p.get("email", "") or "").lower() == email:
             return jsonify({"ok": False, "error": "Email is already used by another account."}), 400
@@ -550,7 +550,7 @@ def api_guess():
     remaining = game["max_guesses"] - game["guesses_taken"]
     secret = game["secret"]
 
-    # -------- WIN --------
+   
     if guess == secret:
         time_taken = time.time() - game["start_time"]
         base_points = WINNING_SCORE * game["mult"]
@@ -583,7 +583,7 @@ def api_guess():
             "leaderboard": get_leaderboard(limit=None),
         })
 
-    # -------- AUTO LOSE --------
+    
     if remaining == 0:
         time_taken = time.time() - game["start_time"]
 
@@ -640,7 +640,7 @@ def api_delete():
         msg, code = err
         return jsonify({"ok": False, "error": msg}), code
 
-    # safer: only allow deleting your own account
+   
     if not session.get("username"):
         return jsonify({"ok": False, "error": "Please login first."}), 401
     if session.get("username") != username:

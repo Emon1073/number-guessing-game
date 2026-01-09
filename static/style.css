@@ -458,3 +458,32 @@ button.danger:hover{ background:#991b1b; }
 #loginPanel, #createPanel, #forgotPanel {
   max-width: 420px;
 }
+
+
+/* Make leaderboard panel positioning context */
+#lbPanel {
+  position: relative;
+}
+
+/* Pin back button to top-right */
+#closeLbBtn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 10;
+}
+
+/* Prevent overlap on small screens */
+@media (max-width: 600px) {
+  #closeLbBtn {
+    top: 10px;
+    right: 10px;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+}
+
+#lbPanel h2 {
+  padding-right: 140px;
+}
+
